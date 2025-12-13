@@ -23,7 +23,7 @@ jobs:
           choco install netfx-4.6.1-devpack -y
 
       - name: Restore NuGet packages
-        run: nuget restore spy-spotify.sln
+        run: nuget restore EspionSpotify.sln
 
       - name: Build solution (Release)
         run: |
