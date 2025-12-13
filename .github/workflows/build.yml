@@ -1,4 +1,4 @@
-name: Build Spytify
+name: Build Spytify (.NET Framework)
 
 on:
   push:
@@ -15,29 +15,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "6.0.x"
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
 
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build (Release)
-        run: dotnet build --configuration Release --no-restore
-
-      - name: Publish
+      - name: Install .NET Framework 4.6.1 Developer Pack
         run: |
-          dotnet publish \
-            --configuration Release \
-            --runtime win-x64 \
-            --self-contained false \
-            -p:PublishSingleFile=true \
-            -p:IncludeNativeLibrariesForSelfExtract=true \
-            -o publish
+          choco install netfx-4.6.1-devpack -y
 
-      - name: Upload artifact
+      - name: Restore NuGet packages
+        run: nuget restore spy-spotify.sln
+
+      - name: Build solution (Release)
+        run: |
+          msbuild spy-spotify.sln ^
+            /p:Configuration=Release ^
+            /p:Platform="Any CPU"
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Spytify-win-x64
-          path: publish/
+          name: Spytify-win-net461
+          path: |
+            **/bin/Release/**
