@@ -27,7 +27,7 @@ jobs:
 
       - name: Build solution (Release)
         run: |
-          msbuild spy-spotify.sln ^
+          msbuild EspionSpotify.sln ^
             /p:Configuration=Release ^
             /p:Platform="Any CPU"
 
