@@ -91,6 +91,70 @@ have no effect on the recording whatsoever.
 Spytify needed the same guard on Windows, pinning the audio session volume
 to 1.0.
 
+## Recipes
+
+### Record a set number of tracks and stop
+
+```bash
+./spytify.py -n 40
+```
+
+Start it, then play in Spotify. It records each track, skips adverts, and
+exits by itself after 40 saved tracks. Adverts and tracks you already own do
+not count toward the total.
+
+### Start at a particular song and work down a list
+
+```bash
+./spytify.py --start-at "We Have All the Time in the World" -n 40
+```
+
+This is the reliable way to record a playlist from a known point. The tool
+sits idle, recording nothing, until a track whose title contains that text
+starts playing; from then on it records normally and counts to 40.
+
+Matching is case-insensitive and a substring, so `We Have All The Time In The
+World - Remastered 2019` and `... (From "On Her Majesty's Secret Service")`
+both match.
+
+Launch it first, then click the song in Spotify — the order does not matter,
+it will wait either way.
+
+**Why the anchor is needed:** Spotify's D-Bus interface reports
+`HasTrackList = false` and implements neither the MPRIS `TrackList` nor the
+`Playlists` interface. No local program can enumerate your playlist, see its
+order, or tell which song is "first" or "most recently added". The tool only
+ever sees the track that is playing right now. `--start-at` is how you tell it
+where your list begins; everything after that follows your own play order.
+
+### Long unattended runs
+
+```bash
+./spytify.py --start-at "First Song" -n 40 --min-duration 45
+```
+
+`--min-duration 45` throws away anything shorter than 45 seconds, which keeps
+advert fragments and accidental skips out of the library. Expect roughly
+3.5 minutes per track: 40 tracks takes about 2.5 to 3 hours. You can keep
+using the machine normally throughout.
+
+### Fill in missing year and genre afterwards
+
+```bash
+./spytify.py --backfill ~/Music/Spytify
+```
+
+Safe to re-run; see [Backfilling](#backfilling).
+
+### Listen to Spotify while recording
+
+```bash
+./spytify.py --speakers
+```
+
+By default you will hear nothing — Spotify is on the virtual cable. That is
+deliberate, not a fault.
+
 ## Options
 
 | Option | Meaning |
@@ -99,6 +163,7 @@ to 1.0.
 | `-f, --format` | `mp3` `flac` `m4a` `ogg` `opus` `wav` (default `mp3`) |
 | `-b, --bitrate` | kbps for lossy formats (default 320) |
 | `-n, --max-tracks` | stop automatically after N tracks are saved |
+| `--start-at TITLE` | ignore everything until a track whose title contains TITLE plays, then record from there |
 | `--template` | path template; fields: `artist` `albumartist` `album` `title` `tracknum` `disc` |
 | `--speakers` | hear Spotify on your normal output instead of the virtual cable |
 | `--no-force-volume` | don't raise Spotify's volume to 100% |
@@ -222,23 +287,29 @@ limited to five authorised users, and loses access to a number of endpoints.
 Reading playback state has never required Premium, but registering the app now
 effectively does.
 
-## Results from a real run
+## Results from real runs
 
-40 consecutive tracks, unattended, 2 h 52 m:
+Two unattended 40-track runs, the second anchored with `--start-at`:
 
-| | |
-|---|---|
-| Tracks recorded | 40 of 40 |
-| Adverts skipped | 35 |
-| Encode failures | 0 |
-| Discarded as too short | 0 |
-| Trailing silence trimmed | 34 tracks |
-| Core tags + artwork | 100% |
-| Year and genre | 26 of 42 after backfill |
+| | run 1 | run 2 |
+|---|---|---|
+| Wall time | 2 h 52 m | 2 h 52 m |
+| Tracks recorded | 40 of 40 | 40 of 40 |
+| Adverts skipped | 35 | 32 |
+| Encode failures | 0 | 0 |
+| Discarded as too short | 0 | 0 |
+| Trailing silence trimmed | 34 | 33 |
+| Core tags + artwork | 100% | 100% |
 
-The year/genre gap is MusicBrainz coverage, not a failure of the tool: the
-remainder are royalty-free and "epic cover" channels and regional releases
-that the database simply does not carry.
+Across the resulting 82-file library: every file has title, artist, album,
+album artist, track number and embedded cover art. Year and genre reached 47
+of 82 after backfilling.
+
+That gap is MusicBrainz coverage, not a failure of the tool. The remainder are
+game soundtracks, "epic cover" and trailer-music channels, chiptune, and
+regional releases (a Japanese compilation, an Italian Morricone pressing) that
+the database does not carry. AcoustID fingerprinting, which identifies a track
+by its audio rather than its name, would be the way to close it.
 
 ## Limitations
 
@@ -254,6 +325,14 @@ that the database simply does not carry.
   restarts, and there is a short window before the cable routing is re-applied.
 - No GUI. `tkinter` is not in the system Python on Ubuntu, and the tool
   deliberately has no dependencies.
+- **It cannot read your playlist.** Spotify exposes no MPRIS `TrackList` or
+  `Playlists` interface (`HasTrackList = false`), so the tool cannot enumerate
+  a list, know its order, or find the newest-added song. It sees only the
+  currently playing track. Use `--start-at` to anchor a run, and let Spotify's
+  own play order do the rest.
+- Spotify does expose two non-standard D-Bus methods, `LoadContextUri` and
+  `OpenUri`, which may allow starting a given playlist URI from the tool.
+  These are untested here.
 
 ## Licence
 

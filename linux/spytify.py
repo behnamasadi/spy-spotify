@@ -738,6 +738,7 @@ class Recorder:
         self.current_id = None
         self.running = True
         self.saved = 0
+        self.armed = not args.start_at   # when False, wait for the anchor track
         self.lag_bytes = int(LAG_SECONDS * BPS)
         self.original_volume = None
         self.cable = VirtualCable(not args.speakers)
@@ -855,6 +856,8 @@ class Recorder:
             return 1
         self.cable.start()
         log(f"watching {self.a.player}; writing {self.a.format} to {self.a.output}")
+        if self.a.start_at:
+            log(f"waiting for a track titled like '{self.a.start_at}' before recording")
 
         last_poll = 0.0
         last_capture_try = 0.0
@@ -923,6 +926,19 @@ class Recorder:
         position = self.mpris.position()
         first_seen = self.current_id is None
         self.current_id = track.trackid
+
+        # Wait for the track the user named before recording anything, so a run
+        # starts at a known point in their list rather than wherever the queue
+        # happens to be.
+        if not self.armed:
+            needle = self.a.start_at.casefold()
+            if needle in track.title.casefold():
+                self.armed = True
+                log(f"found start track '{track}' - recording from here")
+            else:
+                log(f"  . waiting for '{self.a.start_at}' (now: {track})")
+                self.boundary(None, position)
+                return
 
         if track.is_ad and self.a.skip_ads:
             log("  (advertisement - not recording)")
@@ -1041,6 +1057,9 @@ def main():
                    help="substring matching the PipeWire stream to capture")
     p.add_argument("--poll", type=float, default=0.25,
                    help="seconds between MPRIS polls (default: 0.25)")
+    p.add_argument("--start-at", metavar="TITLE", default=None,
+                   help="ignore tracks until one whose title contains TITLE "
+                        "plays, then record from there")
     p.add_argument("-n", "--max-tracks", type=int, default=0,
                    help="stop automatically after this many tracks are saved")
     p.add_argument("--min-duration", type=float, default=30.0,
