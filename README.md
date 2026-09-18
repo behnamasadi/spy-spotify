@@ -10,6 +10,8 @@
 
 Spytify is a Spotify recorder for Windows which records Spotify audio without recording or playing ads. It automatically splits songs into separate tracks and records to WAV or MP3 with media metadata, meaning you can easily start enjoying your music offline.
 
+> **Running Linux?** Spytify is Windows-only — it is built on WASAPI loopback, the Windows audio-session API and window-title scraping, none of which exist on Linux, and Mono does not help. This fork adds [`linux/`](linux/), a standalone recorder that does the same job with PipeWire and MPRIS: per-application capture, automatic track splitting, advert skipping, cover art and media tags. No dependencies beyond `pipewire` and `ffmpeg`. See [linux/README.md](linux/README.md).
+
 <p align="center"><img alt="Spotify Recorder logs" src="https://jwallet.github.io/spy-spotify/assets/images/ui_record.png" /></p>
 
 ### [How does it work?](#how-does-it-work)
